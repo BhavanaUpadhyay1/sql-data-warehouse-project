@@ -17,28 +17,24 @@ INSERT INTO silver.crm_prd_info (
 )
 SELECT 
   prd_id,
-  replace(substring(prd_key, 1, 5), '-', '_') as cat_id,   
-  substring(prd_key, 7) as prd_key,                        
+  REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,   
+  SUBSTRING(prd_key, 7) AS prd_key,                        
   prd_nm,
-  ifnull(prd_cost, 0), 
+  IFNULL(prd_cost, 0) AS prd_cost, 
   CASE 
-    WHEN upper(trim(prd_line)) = 'M' THEN 'Mountain'
-    WHEN upper(trim(prd_line)) = 'R' THEN 'Road'
-    WHEN upper(trim(prd_line)) = 'S' THEN 'Other sales'
-    WHEN upper(trim(prd_line)) = 'T' THEN 'Touring'
+    WHEN UPPER(TRIM(prd_line)) = 'M' THEN 'Mountain'
+    WHEN UPPER(TRIM(prd_line)) = 'R' THEN 'Road'
+    WHEN UPPER(TRIM(prd_line)) = 'S' THEN 'Other sales'
+    WHEN UPPER(TRIM(prd_line)) = 'T' THEN 'Touring'
     ELSE 'n/a'
   END AS prd_line,
-  prd_start_dt,
-  DATE_SUB(
+  CAST(prd_start_dt AS DATE) AS prd_start_dt,
+  CAST(DATE_SUB(
     LEAD(prd_start_dt) OVER (PARTITION BY prd_key ORDER BY prd_start_dt),
     INTERVAL 1 DAY
-  ) AS prd_end_dt,                                         
+  ) AS DATE) AS prd_end_dt,                                         
   CURRENT_DATE() AS dwh_create_date                       
-FROM bronze.crm_prd_info
-WHERE substring(prd_key, 7) IN (
-  SELECT sls_prd_key FROM bronze.crm_sales_details
-);
-
+FROM bronze.crm_prd_info;
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Extra information:
