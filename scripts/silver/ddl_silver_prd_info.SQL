@@ -48,7 +48,7 @@ FROM bronze.crm_prd_info;
 -- expectation: no results
 
 select prd_nm
-from bronze.crm_prd_info
+from silver.crm_prd_info
 where prd_nm != trim(prd_nm)
 
 -------------------------------------------------------------------------------------------------------------------------
@@ -56,14 +56,14 @@ where prd_nm != trim(prd_nm)
 -- check for NULLs or negative numbers 
 -- expectation: no results
 select prd_cost
-from bronze.crm_prd_info
+from silver.crm_prd_info
 where prd_cost < 0 or prd_cost is null
 
 -------------------------------------------------------------------------------------------------------------------------
 
 -- check for invalid date orders
 select * 
-from bronze.crm_prd_info
+from silver.crm_prd_info
 where prd_end_dt < prd_start_dt
 
 --------------------------------------------------------------------------------------------------------------------------
