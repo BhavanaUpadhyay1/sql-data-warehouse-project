@@ -2,6 +2,10 @@
  -- values must not be null, zero or negative
  -- updated the data type from varchar to dates
  -- checked data consistency between sales, quantity and price
+ -- handling invalid data
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 Insert into silver.crm_sales_details(
   sls_ord_num,
   sls_prd_key,
