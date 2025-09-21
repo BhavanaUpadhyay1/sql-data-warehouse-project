@@ -2,7 +2,11 @@
 -- Expectation: No result
 -- categorized product key
 -- checked the product with sales table that product is sold for atleast one time or not
--- done data modelling, mapping and standardization
+-- done data modelling, mapping, standardization and normalization
+-- derived new columns
+-- handled missing information
+-- data type casting
+-- data enrichment
 
 INSERT INTO silver.crm_prd_info (
   prd_id,
@@ -90,5 +94,9 @@ ADD COLUMN cat_id VARCHAR(50);
 ALTER TABLE silver.crm_prd_info
 MODIFY COLUMN prd_start_dt date,
 MODIFY COLUMN prd_end_dt date;
+
+-- TO CHECK COMPLETE CLEANED PRODUCT TABLE RUN THIS COMMAND
+
+select * from silver.crm_prd_info
 
 
