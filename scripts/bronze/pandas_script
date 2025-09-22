@@ -1,0 +1,181 @@
+# pandas script to extract table format from csv to mysql
+
+import pandas as pd
+import os
+import re
+from pathlib import Path
+
+def clean_column_name(col_name):
+    """Clean column names to be SQL-friendly"""
+    clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', str(col_name))
+    clean_name = re.sub(r'_+', '_', clean_name)
+    clean_name = clean_name.strip('_')
+    if clean_name and clean_name[0].isdigit():
+        clean_name = 'col_' + clean_name
+    return clean_name.lower() if clean_name else 'unnamed_column'
+
+def detect_data_type(series):
+    """Detect appropriate SQL data type based on pandas series"""
+    non_null_series = series.dropna()
+    
+    if len(non_null_series) == 0:
+        return "VARCHAR(255)"
+    
+    if pd.api.types.is_numeric_dtype(series):
+        if pd.api.types.is_integer_dtype(series):
+            max_val = non_null_series.max()
+            min_val = non_null_series.min()
+            
+            if min_val >= -2147483648 and max_val <= 2147483647:
+                return "INTEGER"
+            else:
+                return "BIGINT"
+        else:
+            return "DECIMAL(10,2)"
+    
+    elif pd.api.types.is_datetime64_any_dtype(series):
+        return "DATETIME"
+    
+    elif pd.api.types.is_bool_dtype(series):
+        return "BOOLEAN"
+    
+    else:
+        max_length = non_null_series.astype(str).str.len().max()
+        if max_length <= 50:
+            return "VARCHAR(50)"
+        elif max_length <= 255:
+            return "VARCHAR(255)"
+        elif max_length <= 1000:
+            return "VARCHAR(1000)"
+        else:
+            return "TEXT"
+
+def generate_ddl_for_csv(csv_path, table_name=None):
+    """Generate DDL script for a single CSV file"""
+    try:
+        print(f"Processing: {csv_path}")
+        
+        # Read CSV file
+        df = pd.read_csv(csv_path, nrows=1000)  # Sample first 1000 rows
+        
+        # Generate table name if not provided
+        if not table_name:
+            table_name = Path(csv_path).stem.lower()
+            table_name = re.sub(r'[^a-zA-Z0-9_]', '_', table_name)
+        
+        print(f"  - Table name: {table_name}")
+        print(f"  - Columns found: {len(df.columns)}")
+        for col in df.columns:
+            print(f"    * {col}")
+        
+        # Generate DDL
+        ddl_lines = [f"-- DDL for table: {table_name}"]
+        ddl_lines.append(f"-- Source file: {csv_path}")
+        ddl_lines.append(f"-- Columns: {len(df.columns)}, Rows analyzed: {len(df)}")
+        ddl_lines.append(f"DROP TABLE IF EXISTS {table_name};")
+        ddl_lines.append(f"CREATE TABLE {table_name} (")
+        
+        column_definitions = []
+        for col in df.columns:
+            clean_col = clean_column_name(col)
+            data_type = detect_data_type(df[col])
+            column_definitions.append(f"    {clean_col} {data_type}")
+            print(f"    * {col} -> {clean_col} {data_type}")
+        
+        ddl_lines.append(",\n".join(column_definitions))
+        ddl_lines.append(");")
+        ddl_lines.append("")
+        
+        return "\n".join(ddl_lines)
+        
+    except Exception as e:
+        error_msg = f"-- Error processing {csv_path}: {str(e)}\n"
+        print(f"Error: {str(e)}")
+        return error_msg
+
+def find_and_process_csv_files():
+    """Find all CSV files in specified directory and process them"""
+    
+    # CHANGE THIS PATH to where your CSV files are located
+    # Based on the detection, your CSV files are in the project folder
+    search_directory = r"C:\Users\bhava\Downloads\sql-data-warehouse-project"
+    
+    # Option 2: Or search in current directory
+    # search_directory = "."
+    
+    search_dir = Path(search_directory)
+    
+    print("CSV to SQL DDL Generator")
+    print("=" * 50)
+    print(f"Searching in: {search_dir.absolute()}")
+    
+    # Check if directory exists
+    if not search_dir.exists():
+        print(f"ERROR: Directory does not exist: {search_directory}")
+        print("\nLet's check some common locations...")
+        
+        # Check Downloads folder
+        downloads = Path(r"C:\Users\something\Downloads")
+        if downloads.exists():
+            print(f"\nContents of Downloads folder:")
+            for item in downloads.iterdir():
+                if item.is_dir() and "sql" in item.name.lower():
+                    print(f"  FOLDER: {item.name}")
+                    # Check if it has CSV files
+                    csv_count = len(list(item.rglob("*.csv")))
+                    if csv_count > 0:
+                        print(f"    -> Contains {csv_count} CSV files")
+        return
+    
+    # Find all CSV files (including in subfolders)
+    csv_files = list(search_dir.rglob("*.csv"))  # rglob searches recursively
+    
+    if not csv_files:
+        print("No CSV files found")
+        print(f"\nContents of {search_directory}:")
+        try:
+            for item in search_dir.iterdir():
+                if item.is_file():
+                    print(f"  FILE: {item.name}")
+                elif item.is_dir():
+                    print(f"  FOLDER: {item.name}/")
+                    # Check if subfolder has CSV files
+                    sub_csv = len(list(item.glob("*.csv")))
+                    if sub_csv > 0:
+                        print(f"    -> Contains {sub_csv} CSV files")
+        except Exception as e:
+            print(f"Error listing directory: {e}")
+        return
+    
+    print(f"Found {len(csv_files)} CSV files:")
+    for csv_file in csv_files:
+        relative_path = csv_file.relative_to(search_dir)
+        print(f"  - {relative_path}")
+    
+    # Generate DDL for all files
+    all_ddl = []
+    all_ddl.append("-- SQL DDL Scripts Generated from CSV Files")
+    all_ddl.append(f"-- Generated on: {pd.Timestamp.now()}")
+    all_ddl.append(f"-- Source directory: {search_dir.absolute()}")
+    all_ddl.append("-- " + "="*60)
+    all_ddl.append("")
+    
+    print(f"\nProcessing CSV files...")
+    print("-" * 50)
+    
+    for csv_file in csv_files:
+        ddl = generate_ddl_for_csv(csv_file)
+        all_ddl.append(ddl)
+        print("-" * 30)
+    
+    # Write to output file
+    output_file = "generated_ddl_scripts.sql"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write("\n".join(all_ddl))
+    
+    print(f"\nSUCCESS!")
+    print(f"DDL scripts saved to: {Path(output_file).absolute()}")
+    print(f"Processed {len(csv_files)} CSV files")
+
+if __name__ == "__main__":
+    find_and_process_csv_files()
