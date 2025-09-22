@@ -1,4 +1,6 @@
 -- Data standarization and consistency
+-- Handled missing values
+-- data normalization
 insert into silver.erp_loc_a101
 (cid,
 cntry)
